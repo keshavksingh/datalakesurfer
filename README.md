@@ -1,6 +1,6 @@
 # DataLakeSurfer
 
-> **A unified toolkit for detecting, exploring, and validating data lake formats** across **Azure Data Lake Storage Gen2** and **Microsoft Fabric Lakehouse**.
+> **A unified toolkit for detecting, exploring, and validating data lake formats** across **Azure Data Lake Storage Gen2** , **Microsoft Fabric Lakehouse**, **GCP Google Storage** and **AWS S3**.
 
 DataLakeSurfer lets you:
 
@@ -8,7 +8,7 @@ DataLakeSurfer lets you:
 - Retrieve **normalized schema** for supported formats.
 - Detect **partition columns** for Parquet datasets.
 - Validate configuration inputs with **Pydantic models**.
-- Work seamlessly with both **ADLS Gen2** and **Fabric Lakehouse**.
+- Work seamlessly with Azure **ADLS Gen2** and **Fabric Lakehouse**, **AWS S3** and **GCP GS**.
 
 ---
 
@@ -20,8 +20,10 @@ DataLakeSurfer lets you:
 4. [Usage Examples](#-usage-examples)
    - [1. Detect Format (ADLS)](#1-detect-format-adls)
    - [2. Detect Format (Fabric)](#2-detect-format-fabric)
-   - [3. Retrieve Schema](#3-retrieve-schema)
-   - [4. Detect Partitions](#4-detect-partitions)
+   - [3. Detect Format (GCS)](#3-detect-format-gcs)
+   - [4. Retrieve Schema](#4-retrieve-schema)
+   - [5. Detect Partitions](#5-detect-partitions)
+   - [6. AWS S3 Usage](#6-aws-s3-usage)
 5. [Supported Formats](#-supported-formats)
 6. [Development & Testing](#-development--testing)
 7. [License](#-license)
@@ -38,15 +40,17 @@ Requirements:
 
 - Python 3.9+
 - `pyarrowfs-adlgen2==0.2.5`
-- `adlfs==2023.12.0`
+- `adlfs==2024.12.0`
 - `azure-identity==1.17.1`
-- `azure-storage-file-datalake==12.17.0`
+- `azure-storage-file-datalake==12.21.0`
 - `numpy==1.26.4`
 - `pandas==1.5.3`
 - `cryptography==43.0.1`
-- `duckdb==1.1.1`
-- `deltalake==0.20.2`
+- `duckdb==1.3.2`
+- `deltalake==1.1.4`
 - `pydantic==2.11.7`
+- `gcsfs==2025.7.0`
+- `s3fs==2025.7.0`
 
 ---
 
@@ -146,7 +150,36 @@ print(f)
 
 ---
 
-### 3. Retrieve Schema
+### 3. Detect Format (GCS)
+
+```python
+import json
+with open("/Workspace/Users/<>/fresh-replica-393006-0398d554d3fa.json", "r") as f:
+    service_account_dict = json.load(f)
+
+from datalakesurfer.gcs_format_detector import GCSFormatDetector
+f = GCSFormatDetector(service_account_info=service_account_dict,
+    file_system_name="storagebucket0001",
+    directory_path="Country").detect_format()
+print(f)
+# {'status': 'success', 'format': 'delta'}
+
+f = GCSFormatDetector(service_account_info=service_account_dict,
+    file_system_name="storagebucket0001",
+    directory_path="ParquetDataSource").detect_format()
+print(f)
+# {'status': 'success', 'format': 'parquet'}
+
+f = GCSFormatDetector(service_account_info=service_account_dict,
+    file_system_name="storagebucket0001",
+    directory_path="customerdw/mydb/product").detect_format()
+print(f)
+# {'status': 'success', 'format': 'iceberg'}
+```
+
+---
+
+### 4. Retrieve Schema
 
 For **Parquet/Delta/Iceberg** in ADLS:
 
@@ -178,12 +211,40 @@ s = ParquetSchemaRetriever(account_name="adlssynapseeus01",
 print(s)
 
 #{'status': 'success', 'schema': [{'column_name': 'SalesId', 'dtype': 'string'}, {'column_name': 'ProductName', 'dtype': 'string'}, {'column_name': 'SalesDateTime', 'dtype': 'timestamp'}, {'column_name': 'SalesAmount', 'dtype': 'int'}, {'column_name': 'EventProcessingTime', 'dtype': 'timestamp'}]}
-
 ```
 
 ---
 
-### 4. Detect Partitions
+### 4. Retrieve Schema (GCS)
+
+For **Delta/Iceberg/Parquet** in GCS:
+
+```python
+from datalakesurfer.schemas.gcs_delta_schema import GCSDeltaSchemaRetriever
+s = GCSDeltaSchemaRetriever(service_account_info=service_account_dict,
+    file_system_name="storagebucket0001",
+    directory_path="Country").get_schema()
+print(s)
+# [{'column_name': 'SalesId', 'dtype': 'string'}, ...]
+
+from datalakesurfer.schemas.gcs_iceberg_schema import GCSIcebergSchemaRetriever
+s = GCSIcebergSchemaRetriever(service_account_info=service_account_dict,
+    file_system_name="storagebucket0001",
+    directory_path="customerdw/mydb/product").get_schema()
+print(s)
+# [{'column_name': 'productId', 'dtype': 'string'}, ...]
+
+from datalakesurfer.schemas.gcs_parquet_schema import GCSParquetSchemaRetriever
+s = GCSParquetSchemaRetriever(service_account_info=service_account_dict,
+    file_system_name="storagebucket0001",
+    directory_path="ParquetDataSource").get_schema()
+print(s)
+# [{'column_name': 'SalesId', 'dtype': 'string'}, ...]
+```
+
+---
+
+### 5. Detect Partitions
 
 ADLS:
 
@@ -279,13 +340,125 @@ print(f)
 
 ---
 
+### 5. Detect Partitions (GCS)
+
+```python
+from datalakesurfer.schemas.gcs_parquet_schema import GCSParquetSchemaRetriever
+f = GCSParquetSchemaRetriever(service_account_info=service_account_dict,
+    file_system_name="storagebucket0001",
+    directory_path="ParquetDataSource").detect_partitions()
+print(f)
+# {'status': 'success', 'isPartitioned': True, 'partition_columns': [{'column_name': 'ProductName', 'dtype': 'string'}, ...]}
+
+f = GCSParquetSchemaRetriever(service_account_info=service_account_dict,
+    file_system_name="storagebucket0001",
+    directory_path="ParquetDataSource").detect_partitions()
+print(f)
+# {'status': 'success', 'isPartitioned': False, 'partition_columns': []}
+```
+
+---
+
+### 6. AWS S3 Usage
+
+Set your AWS credentials:
+
+```python
+AWS_ACCESS_KEY_ID = "<YOUR_AWS_ACCESS_KEY_ID>"
+AWS_SECRET_ACCESS_KEY = "<YOUR_AWS_SECRET_ACCESS_KEY>"
+AWS_REGION = "us-east-1"
+```
+
+#### Detect Format (S3)
+
+```python
+from datalakesurfer.s3_format_detector import S3FormatDetector
+f = S3FormatDetector(aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    aws_region=AWS_REGION,
+    file_system_name="devs3bucket001",
+    directory_path="Country").detect_format()
+print(f)
+# {'status': 'success', 'format': 'delta'}
+
+f = S3FormatDetector(aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    aws_region=AWS_REGION,
+    file_system_name="devs3bucket001",
+    directory_path="ParquetDataSource").detect_format()
+print(f)
+# {'status': 'success', 'format': 'parquet'}
+
+f = S3FormatDetector(aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    aws_region=AWS_REGION,
+    file_system_name="devs3bucket001",
+    directory_path="customerdw/mydb/product").detect_format()
+print(f)
+# {'status': 'success', 'format': 'iceberg'}
+```
+
+#### Retrieve Schema (S3)
+
+```python
+from datalakesurfer.schemas.s3_delta_schema import S3DeltaSchemaRetriever
+s = S3DeltaSchemaRetriever(aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    aws_region=AWS_REGION,
+    file_system_name="devs3bucket001",
+    directory_path="Country").get_schema()
+print(s)
+# [{'column_name': 'SalesId', 'dtype': 'string'}, ...]
+
+from datalakesurfer.schemas.s3_iceberg_schema import S3IcebergSchemaRetriever
+s = S3IcebergSchemaRetriever(aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    aws_region=AWS_REGION,
+    file_system_name="devs3bucket001",
+    directory_path="customerdw/mydb/product").get_schema()
+print(s)
+# [{'column_name': 'productId', 'dtype': 'string'}, ...]
+
+from datalakesurfer.schemas.s3_parquet_schema import S3ParquetSchemaRetriever
+s = S3ParquetSchemaRetriever(aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    aws_region=AWS_REGION,
+    file_system_name="devs3bucket001",
+    directory_path="ParquetDataSource").get_schema()
+print(s)
+# [{'column_name': 'SalesId', 'dtype': 'string'}, ...]
+```
+
+#### Detect Partitions (S3 Parquet)
+
+```python
+from datalakesurfer.schemas.s3_parquet_schema import S3ParquetSchemaRetriever
+f = S3ParquetSchemaRetriever(aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    aws_region=AWS_REGION,
+    file_system_name="devs3bucket001",
+    directory_path="ParquetDataSource").detect_partitions()
+print(f)
+# {'status': 'success', 'isPartitioned': True, 'partition_columns': [{'column_name': 'ProductName', 'dtype': 'string'}, ...]}
+
+f = S3ParquetSchemaRetriever(aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    aws_region=AWS_REGION,
+    file_system_name="devs3bucket001",
+    directory_path="ParquetDataSource").detect_partitions()
+print(f)
+# {'status': 'success', 'isPartitioned': False, 'partition_columns': []}
+```
+
+---
+
 ## 📦 Supported Formats
 
-| Format  | ADLS Gen2 | Fabric OneLake |
-| ------- | --------- | -------------- |
-| Parquet | ✅        | ✅             |
-| Delta   | ✅        | ✅             |
-| Iceberg | ✅        | ✅             |
+| Format  | ADLS Gen2 (Azure) | Fabric OneLake (Azure) | GCS (GCP) | S3 (AWS) |
+| ------- | ----------------- | ---------------------- | --------- | -------- |
+| Parquet | .                 | .                      | .         | .        |
+| Delta   | .                 | .                      | .         | .        |
+| Iceberg | .                 | .                      | .         | .        |
 
 ---
 
