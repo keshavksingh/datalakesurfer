@@ -7,6 +7,7 @@ DataLakeSurfer lets you:
 - Detect whether a directory is **Iceberg**, **Delta**, or **Parquet**.
 - Retrieve **normalized schema** for supported formats.
 - Detect **partition columns** for Parquet datasets.
+- Query Delta Format **Query Delta** for through SQL.
 - Validate configuration inputs with **Pydantic models**.
 - Work seamlessly with Azure **ADLS Gen2** and **Fabric Lakehouse**, **AWS S3** and **GCP GS**.
 
@@ -24,6 +25,7 @@ DataLakeSurfer lets you:
    - [4. Retrieve Schema](#4-retrieve-schema)
    - [5. Detect Partitions](#5-detect-partitions)
    - [6. AWS S3 Usage](#6-aws-s3-usage)
+   - [Query Delta with SQL](#query-delta-through-sql-gcs--s3--adls-gen2--microsoft-fabric)
 5. [Supported Formats](#-supported-formats)
 6. [Development & Testing](#-development--testing)
 7. [License](#-license)
@@ -448,6 +450,70 @@ f = S3ParquetSchemaRetriever(aws_access_key_id=AWS_ACCESS_KEY_ID,
     directory_path="ParquetDataSource").detect_partitions()
 print(f)
 # {'status': 'success', 'isPartitioned': False, 'partition_columns': []}
+```
+
+### Query Delta Through SQL (GCS / S3 / ADLS Gen2 / Microsoft Fabric)
+
+```python
+# GCS
+from datalakesurfer.query.gcs_delta_query import GCSDeltaQueryRetriever
+import json
+tables = {
+    "sales": "storagebucket0001/SalesOrder",
+    "country": "storagebucket0001/Country"
+}
+query = "SELECT * FROM sales CROSS JOIN country"
+retriever = GCSDeltaQueryRetriever(service_account_info=service_account_dict)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
+# S3
+from datalakesurfer.query.s3_delta_query import S3DeltaQueryRetriever
+import json
+tables = {
+    "sales": "devs3bucket001/SalesOrder",
+    "country": "devs3bucket001/Country"
+}
+query = "SELECT * FROM sales CROSS JOIN country"
+retriever = S3DeltaQueryRetriever(
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    aws_region=AWS_REGION
+)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
+# Microsoft Fabric
+from datalakesurfer.query.fabric_delta_query import FabricDeltaQueryRetriever
+tables = {
+    "sales": "devlakehouse.Lakehouse/Files/salesorder",
+    "salesorder": "devlakehouse.Lakehouse/Files/salesorder"
+}
+query = "SELECT * FROM sales UNION ALL SELECT * FROM salesorder"
+retriever = FabricDeltaQueryRetriever(
+    account_name="onelake",
+    file_system_name="devworkspace",
+    token=token,
+    expires_on=expires_on
+)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
+# ADLS Gen2
+from datalakesurfer.query.adls_delta_query import ADLSDeltaQueryRetriever
+tables = {
+    "sales": "salesorder"
+}
+query = "SELECT * FROM sales"
+retriever = ADLSDeltaQueryRetriever(
+    account_name="adlssynapseeus01",
+    file_system_name="datacontainer",
+    token=token,
+    expires_on=expires_on
+)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
 ```
 
 ---
