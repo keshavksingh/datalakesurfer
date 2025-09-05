@@ -26,6 +26,8 @@ DataLakeSurfer lets you:
    - [5. Detect Partitions](#5-detect-partitions)
    - [6. AWS S3 Usage](#6-aws-s3-usage)
    - [Query Delta with SQL](#query-delta-through-sql-gcs--s3--adls-gen2--microsoft-fabric)
+   - [Query Parquet Dataset with SQL](#query-parquet-through-sql-gcs--s3--adls-gen2--microsoft-fabric)
+   - [Query Iceberg with SQL](#query-iceberg-through-sql-gcs--s3--adls-gen2--microsoft-fabric)
 5. [Supported Formats](#-supported-formats)
 6. [Development & Testing](#-development--testing)
 7. [License](#-license)
@@ -518,6 +520,137 @@ print(result_df)
 
 ---
 
+### Query Parquet Through SQL (GCS / S3 / ADLS Gen2 / Microsoft Fabric)
+
+```python
+# GCS
+from datalakesurfer.query.gcs_parquet_query import GCSParquetQueryRetriever
+import json
+tables = {
+    "sales": "storagebucket0001/ParquetDataSource",
+    "account": "storagebucket0001/ParquetDataSource",
+}
+query = "SELECT * FROM sales UNION ALL SELECT * FROM account where SalesId = 'adz02939-4557-4d44-8247-1a746232c478'"
+retriever = GCSParquetQueryRetriever(service_account_info=service_account_dict)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
+# S3
+from datalakesurfer.query.s3_parquet_query import S3ParquetQueryRetriever
+import json
+tables = {
+    "sales": "devs3bucket001/ParquetDataSource",
+    "account": "devs3bucket001/ParquetDataSource",
+}
+query = "SELECT * FROM sales UNION ALL SELECT * FROM account where SalesId = 'adz02939-4557-4d44-8247-1a746232c478'"
+retriever = S3ParquetQueryRetriever(
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    aws_region=AWS_REGION
+)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
+# Microsoft Fabric
+from datalakesurfer.query.fabric_parquet_query import FabricParquetQueryRetriever
+tables = {
+    "product": "devlakehouse.Lakehouse/Files/Product",
+    "product2": "devlakehouse.Lakehouse/Files/Product"
+}
+query = "SELECT * FROM product UNION ALL SELECT * FROM product2 where name ='Alice'"
+retriever = FabricParquetQueryRetriever(
+    account_name="onelake",
+    file_system_name="devworkspace",
+    token=token,
+    expires_on=expires_on
+)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
+# ADLS Gen2
+from datalakesurfer.query.adls_parquet_query import ADLSParquetQueryRetriever
+tables = {
+    "sales": "SaleParquetData"
+}
+query = "SELECT * FROM sales LIMIT 10"
+retriever = ADLSParquetQueryRetriever(
+    account_name="adlssynapseeus01",
+    file_system_name="datacontainer",
+    token=token,
+    expires_on=expires_on
+)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
+```
+
+---
+
+### Query Iceberg Through SQL (GCS / S3 / ADLS Gen2 / Microsoft Fabric)
+
+```python
+# GCS
+from datalakesurfer.query.gcs_iceberg_query import GCSIcebergQueryRetriever
+import json
+tables = {
+    "product": "storagebucket0001/customerdw/mydb/product",
+    "product2": "storagebucket0001/customerdw/mydb/product"
+}
+query = "SELECT * FROM product where productId = '0191043d-aac2-4ae6-9409-5f69851ca020' UNION ALL SELECT * FROM product2"
+retriever = GCSIcebergQueryRetriever(service_account_info=service_account_dict)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
+# S3
+from datalakesurfer.query.s3_iceberg_query import S3IcebergQueryRetriever
+import json
+tables = {
+    "product": "devs3bucket001/customerdw/mydb/product",
+    "product2": "devs3bucket001/customerdw/mydb/product"
+}
+query = "SELECT * FROM product UNION ALL SELECT * FROM product2"
+retriever = S3IcebergQueryRetriever(
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    aws_region=AWS_REGION
+)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
+# Microsoft Fabric
+from datalakesurfer.query.fabric_iceberg_query import FabricIcebergQueryRetriever
+tables = {
+    "flighttripdata": "devlakehouse.Lakehouse/Files/FlightTripData"
+}
+query = "SELECT * FROM flighttripdata"
+retriever = FabricIcebergQueryRetriever(
+    account_name="onelake",
+    file_system_name="devworkspace",
+    token=token,
+    expires_on=expires_on
+)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
+# ADLS Gen2
+from datalakesurfer.query.adls_iceberg_query import ADLSIcebergQueryRetriever
+tables = {
+    "product": "customerdw/mydb/product"
+}
+query = "SELECT * FROM product"
+retriever = ADLSIcebergQueryRetriever(
+    account_name="adlssynapseeus01",
+    file_system_name="iceberg-container",
+    token=token,
+    expires_on=expires_on
+)
+result_df = retriever.query(tables=tables, query=query)
+print(result_df)
+
+```
+
+---
+
 ## 📦 Supported Formats
 
 | Format  | ADLS Gen2 (Azure) | Fabric OneLake (Azure) | GCS (GCP) | S3 (AWS) |
@@ -525,6 +658,12 @@ print(result_df)
 | Parquet | .                 | .                      | .         | .        |
 | Delta   | .                 | .                      | .         | .        |
 | Iceberg | .                 | .                      | .         | .        |
+
+| Query Format | ADLS Gen2 (Azure) | Fabric OneLake (Azure) | GCS (GCP) | S3 (AWS) |
+| ------------ | ----------------- | ---------------------- | --------- | -------- |
+| Parquet      | .                 | .                      | .         | .        |
+| Delta        | .                 | .                      | .         | .        |
+| Iceberg      | .                 | .                      | .         | .        |
 
 ---
 
