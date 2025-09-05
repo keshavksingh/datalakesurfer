@@ -2,10 +2,10 @@ from setuptools import setup, find_packages
 
 setup(
     name='datalakesurfer',
-    version='0.1.1',
+    version='0.1.4',
     author='Keshav Kant Singh',
     author_email='masterkeshav@gmail.com',
-    description='A Python package for Azure Datalake Storage adlsgen2 [abfss://] and Microsoft Fabric Lakehouse [abfss://], Google Cloud Storage [gs://bucket], AWS S3 bucket [s3://bucket] enables format detection and schema retrieval for Iceberg, Delta, and Parquet formats.It also helps identify paritioned columns for parquet datasets.',
+    description = "A Python package for Azure Datalake Storage adlsgen2 [abfss://] and Microsoft Fabric Lakehouse [abfss://], Google Cloud Storage [gs://bucket], AWS S3 bucket [s3://bucket] enables format detection and schema retrieval for Iceberg, Delta, and Parquet formats.It helps identify paritioned columns for parquet datasets. It also supports querying Delta, Parquet, and Iceberg formats through SQL constructs.",
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/keshavksingh/datalakesurfer',
