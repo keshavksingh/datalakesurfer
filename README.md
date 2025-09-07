@@ -7,7 +7,7 @@ DataLakeSurfer lets you:
 - Detect whether a directory is **Iceberg**, **Delta**, or **Parquet**.
 - Retrieve **normalized schema** for supported formats.
 - Detect **partition columns** for Parquet datasets.
-- Query Delta, Parquet, Iceberg Format **Query Delta, Parquet, Iceberg** for through SQL.
+- Query Delta, Parquet, Iceberg Format **Query Delta, Parquet, Iceberg** for through SQL With highly optimized pushdown capability.
 - Validate configuration inputs with **Pydantic models**.
 - Work seamlessly with Azure **ADLS Gen2** and **Fabric Lakehouse**, **AWS S3** and **GCP GS**.
 
