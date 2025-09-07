@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "datalakesurfer"
-version = "0.1.5"
+version = "0.1.6"
 description = "A Python package for Azure Datalake Storage adlsgen2 [abfss://] and Microsoft Fabric Lakehouse [abfss://], Google Cloud Storage [gs://bucket], AWS S3 bucket [s3://bucket] enables format detection and schema retrieval for Iceberg, Delta, and Parquet formats.It helps identify paritioned columns for parquet datasets. It also supports querying Delta, Parquet, and Iceberg formats through SQL constructs."
 authors = ["Keshav Kant Singh masterkeshav@gmail.com"]
 license = "MIT"
